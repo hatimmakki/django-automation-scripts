@@ -1,5 +1,132 @@
 #!/bin/bash
 
+
+createmodel() {
+  # print usage if no arguments are passed
+  
+  if [ "$#" -lt 1 ]; then
+    echo "Usage: /bin/bash ./tools.sh createmodel <model-name> [--app <app-label>] [--char <field-name>] [--text <field-name>] [-- <field-name>] [--date <field-name>] [--datetime <field-name>] [--decimal <field-name>] [--email <field-name>] [--file <field-name>] [--float <field-name>] [--image <field-name>] [--integer <field-name>] [--json <field-name>] [--uuid <field-name>]"
+    exit 1
+  fi
+
+  MODEL_NAME="$1"
+  shift
+
+  APP_LABEL=""
+  if [[ "$1" == "--app" ]]; then
+    APP_LABEL="$2"
+    shift
+    shift
+  fi
+
+  APP_DIR=""
+  if [ -n "$APP_LABEL" ]; then
+    APP_PY="$(find . -not -path "*site-packages*" -name 'apps.py' | xargs grep -E "label *= *'$APP_LABEL'")"
+    if [ -z "$APP_PY" ]; then
+      echo "Error: Could not find app directory for label $APP_LABEL"
+      exit 1
+    fi
+    APP_DIR="$(dirname "$APP_PY")"
+  fi
+
+  FIELDS=""
+
+  while [[ $# -gt 0 ]]
+  do
+    case "$1" in
+        --char)
+            FIELDS="$FIELDS\n    $2 = models.CharField(max_length=255)"
+            shift
+            shift
+            ;;
+        --text)
+            FIELDS="$FIELDS\n    $2 = models.TextField()"
+            shift
+            shift
+            ;;
+        --date)
+            FIELDS="$FIELDS\n    $2 = models.DateField()"
+            shift
+            shift
+            ;;
+        --datetime)
+            FIELDS="$FIELDS\n    $2 = models.DateTimeField()"
+            shift
+            shift
+            ;;
+        --decimal)
+            FIELDS="$FIELDS\n    $2 = models.DecimalField(max_digits=10, decimal_places=2)"
+            shift
+            shift
+            ;;
+        --email)
+            FIELDS="$FIELDS\n    $2 = models.EmailField()"
+            shift
+            shift
+            ;;
+        --file)
+            FIELDS="$FIELDS\n    $2 = models.FileField()"
+            shift
+            shift
+            ;;
+        --float)
+            FIELDS="$FIELDS\n    $2 = models.FloatField()"
+            shift
+            shift
+            ;;
+        --image)
+            FIELDS="$FIELDS\n    $2 = models.ImageField()"
+            shift
+            shift
+            ;;
+        --integer)
+            FIELDS="$FIELDS\n    $2 = models.IntegerField()"
+            shift
+            shift
+            ;;
+        --json)
+            FIELDS="$FIELDS\n    $2 = models.JSONField()"
+            shift
+            shift
+            ;;
+        --uuid)
+            FIELDS="$FIELDS\n    $2 = models.UUIDField()"
+            shift
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Usage: /bin/bash ./tools.sh createmodel <model-name> [--app <app-label>] [--char <field-name>] [--text <field-name>] [-- <field-name>] [--date <field-name>] [--datetime <field-name>] [--decimal <field-name>] [--email <field-name>] [--file <field-name>] [--float <field-name>] [--image <field-name>] [--integer <field-name>] [--json <field-name>] [--uuid <field-name>]"
+            exit 1
+            ;;
+    esac
+  done
+
+  if [ -z "$FIELDS" ]; then
+    echo "No fields specified."
+  else
+    echo -e "Creating a new Django model: $MODEL_NAME\n"
+
+  MODEL_STRING="from django.db import models\n\nclass $MODEL_NAME(models.Model):$FIELDS\n"
+
+  if [ -z "$APP_DIR" ]; then
+    echo -e "App directory not specified. Please use the --app option to specify the app label.\n"
+    exit 1
+  fi
+
+  MODELS_FILE="$APP_DIR/models.py"
+
+  if [ ! -f "$MODELS_FILE" ]; then
+    touch "$MODELS_FILE"
+  fi
+
+  echo -e "$MODEL_STRING" >> "$MODELS_FILE"
+
+  echo "Model created successfully!"
+fi
+}
+
+
 createapp() {
   if [ "$#" -lt 1 ]; then
     echo "Usage: /bin/bash ./tools.sh createapp <app-name> [--ai settings-file-path]"
@@ -52,6 +179,10 @@ case "$COMMAND" in
     createapp "$@"
     ;;
   # Add more cases for other commands here
+  createmodel)
+    createmodel "$@"
+    ;;
+
   *)
     echo "Unknown command: $COMMAND"
     echo "Usage: /bin/bash ./tools.sh <command> [arguments]"
